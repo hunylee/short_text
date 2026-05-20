@@ -119,9 +119,50 @@ function setMode(mode) {
   window.L1_Source.stopWebcam();
   window.SignDetector.stop();
   
+  // 이전 interim 표시 초기화
+  if (window._speechInterimEl) {
+    window._speechInterimEl.textContent = '';
+    window._speechInterimEl = null;
+  }
+
   switch (mode) {
     case 'speech':
       UI.btnSpeech.classList.add('active');
+      // 음성 모드: 플레이스홀더 숨기고 마이크 안내 표시
+      UI.videoPlaceholder.style.display = 'none';
+
+      // interim 실시간 텍스트를 표시할 요소 생성 (없으면 새로 만들기)
+      let interimEl = document.getElementById('speech-interim-display');
+      if (!interimEl) {
+        interimEl = document.createElement('div');
+        interimEl.id = 'speech-interim-display';
+        interimEl.style.cssText = [
+          'position:absolute', 'bottom:70px', 'left:50%',
+          'transform:translateX(-50%)',
+          'background:rgba(124,58,237,0.85)',
+          'color:#fff', 'padding:10px 22px',
+          'border-radius:24px', 'font-size:1.05rem',
+          'letter-spacing:0.03em', 'z-index:20',
+          'backdrop-filter:blur(8px)',
+          'min-width:160px', 'text-align:center',
+          'pointer-events:none', 'transition:opacity 0.3s'
+        ].join(';');
+        document.getElementById('player-wrapper').style.position = 'relative';
+        document.getElementById('player-wrapper').appendChild(interimEl);
+      }
+      interimEl.textContent = '';
+      window._speechInterimEl = interimEl;
+
+      // 마이크 안내 배너 표시
+      UI.videoPlaceholder.style.display = 'flex';
+      UI.videoPlaceholder.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+          <div style="font-size:3.5rem;animation:pulse 1.2s infinite;">🎤</div>
+          <div style="color:#c4b5fd;font-size:1.1rem;font-weight:600;">음성 인식 중...</div>
+          <div style="color:#94a3b8;font-size:0.85rem;">말씀하시면 Gloss 자막으로 자동 변환됩니다</div>
+        </div>
+      `;
+
       const ok = window.L1_Source.startSpeech();
       if (ok) {
         showToast('음성 인식을 시작합니다. 말씀해주세요.');
@@ -129,6 +170,9 @@ function setMode(mode) {
       } else {
         showToast('음성 인식을 지원하지 않는 브라우저입니다.');
         appendLog('Web Speech API 지원 안함', false);
+        UI.videoPlaceholder.innerHTML = `
+          <div style="color:#f87171;font-size:1rem;">⚠️ 이 브라우저는 음성 인식을 지원하지 않습니다.<br>Chrome 또는 Edge를 사용해주세요.</div>
+        `;
       }
       break;
       
@@ -292,8 +336,9 @@ window.HermesState.onGloss = (gloss, source) => {
   };
   UI.boardSource.textContent = sourceLabels[source] || source;
   
-  // 비디오 오버레이가 활성화된 모드면 같이 업데이트
-  if (window.HermesState.mode === 'video' || window.HermesState.mode === 'webcam') {
+  // 비디오/웹캠/음성 모드 모두 오버레이 업데이트
+  const overlayModes = ['video', 'webcam', 'speech'];
+  if (overlayModes.includes(window.HermesState.mode)) {
     UI.videoBadge.textContent = sourceLabels[source] || source;
     UI.videoBadge.classList.add('badge-active');
     // 오버레이 애니메이션 리셋

@@ -20,16 +20,38 @@ const L1_Source = {
     this.recognition.onresult = (event) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
+        const text = result[0].transcript.trim();
         if (result.isFinal) {
-          const text = result[0].transcript.trim();
+          // 중간 결과 클리어 후 최종 결과 L2로 전달
+          if (window._speechInterimEl) window._speechInterimEl.textContent = '';
           if (text) window.L2_Decode.processText(text, 'speech');
+        } else {
+          // 중간 결과 실시간 표시
+          if (window._speechInterimEl) window._speechInterimEl.textContent = '🎙 ' + text;
         }
       }
     };
     
     this.recognition.onerror = (e) => {
-      if (e.error !== 'aborted') {
+      if (e.error === 'no-speech') {
+        // 음성 없음 → 자동 재시작
+        try { this.recognition.stop(); } catch(_) {}
+        setTimeout(() => {
+          if (window.HermesState.mode === 'speech') {
+            try { this.recognition.start(); } catch(_) {}
+          }
+        }, 200);
+      } else if (e.error !== 'aborted') {
         window.HermesState.onStatus?.(`음성인식 오류: ${e.error}`);
+      }
+    };
+
+    this.recognition.onend = () => {
+      // 연속 인식: 모드가 speech이면 자동 재시작
+      if (window.HermesState.mode === 'speech') {
+        setTimeout(() => {
+          try { this.recognition.start(); } catch(_) {}
+        }, 100);
       }
     };
     

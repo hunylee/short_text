@@ -6,9 +6,11 @@ const L4_Route = {
   sentenceIndex: 0,
   
   routeGloss(original, easy, gloss, source) {
-    // Gloss 큐에 추가 (반복 없음)
-    if (window.HermesState.shownGlosses.has(gloss)) return;
-    window.HermesState.shownGlosses.add(gloss);
+    // 음성 입력은 같은 Gloss라도 반복 표시 허용 (실시간 변환이므로)
+    if (source !== 'speech') {
+      if (window.HermesState.shownGlosses.has(gloss)) return;
+      window.HermesState.shownGlosses.add(gloss);
+    }
     
     window.HermesState.subtitleQueue.push({ original, easy, gloss, source });
     window.HermesState.onStatus?.(`[L4] 자막 큐 추가: "${gloss}" (큐 크기: ${window.HermesState.subtitleQueue.length})`);
