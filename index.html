@@ -68,7 +68,55 @@
         </button>
       </div>
 
-      <div style="margin-top: 20px;">
+      <!-- Hermes AI Agent 설정 카드 -->
+      <div class="ai-config-card">
+        <div class="card-title">
+          <div class="card-title-icon" style="background: rgba(124,58,237,0.15); color: #c4b5fd;">🤖</div>
+          Hermes AI Agent 설정
+          <div class="ai-pulse-dot" id="ai-active-indicator"></div>
+        </div>
+        
+        <div class="ai-setting-row toggle-row">
+          <span class="setting-label">AI 에이전트 활성화</span>
+          <label class="switch">
+            <input type="checkbox" id="ai-toggle">
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <div class="ai-setting-group" id="ai-apikey-group">
+          <label class="setting-label-block" for="ai-apikey">Gemini API Key</label>
+          <div class="apikey-input-wrapper">
+            <input type="password" id="ai-apikey" placeholder="API Key 입력...">
+            <button type="button" class="btn-toggle-visibility" id="btn-toggle-apikey">👁️</button>
+          </div>
+        </div>
+
+        <div class="ai-setting-group">
+          <label class="setting-label-block" for="ai-domain">상황 도메인 (컨텍스트)</label>
+          <select id="ai-domain" class="ai-select">
+            <option value="general">일반 (General)</option>
+            <option value="church" selected>교회 (Church)</option>
+            <option value="hospital">병원 (Hospital)</option>
+            <option value="public_office">공공기관 (Public Office)</option>
+          </select>
+        </div>
+
+        <div class="ai-setting-group">
+          <label class="setting-label-block" for="ai-exclusions">제외 단어 (쉼표 구분)</label>
+          <input type="text" id="ai-exclusions" class="ai-input" placeholder="예: 단어1, 단어2">
+        </div>
+
+        <div class="ai-setting-group">
+          <div class="slider-header">
+            <label class="setting-label-block" for="ai-depth">컨텍스트 깊이 (최근 문장)</label>
+            <span class="slider-value" id="ai-depth-val">5</span>
+          </div>
+          <input type="range" id="ai-depth" min="1" max="10" value="5" class="ai-slider">
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
         <div class="card-title">
           <div class="card-title-icon" style="background: rgba(16,185,129,0.15); color: #6ee7b7;">🌲</div>
           더불어숲 텍스트 DB
@@ -156,9 +204,21 @@
       </div>
       <div class="subtitle-display" id="main-subtitle-display">
         <span class="board-source" id="board-source">대기중</span>
-        <div class="board-original" id="board-original">시스템이 대기 중입니다.</div>
-        <div class="board-easy" id="board-easy" style="display: none;">모드를 선택하세요.</div>
-        <div class="board-gloss" id="board-gloss">모드를 선택하여 시작하세요</div>
+        <!-- Whisper STT (원문/음성인식) -->
+        <div class="board-section">
+          <span class="board-section-label">🎤 Whisper STT</span>
+          <div class="board-original" id="board-original">시스템이 대기 중입니다.</div>
+        </div>
+        <!-- 청각장애인 요약 (Easy Korean) -->
+        <div class="board-section board-section-easy">
+          <span class="board-section-label">👁️ 청각장애인 요약</span>
+          <div class="board-easy" id="board-easy">모드를 선택하세요.</div>
+        </div>
+        <!-- Sign Gloss (수어 글로스) -->
+        <div class="board-section">
+          <span class="board-section-label">🤟 Sign Gloss</span>
+          <div class="board-gloss" id="board-gloss">모드를 선택하여 시작하세요</div>
+        </div>
       </div>
     </section>
   </main>

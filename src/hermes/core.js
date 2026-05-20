@@ -14,6 +14,14 @@ const HermesState = {
   // 현재 모드
   mode: 'idle',   // idle | forest | sign | webcam
   
+  // AI Agent 설정 상태
+  aiEnabled: false,
+  apiKey: '',
+  domain: 'church',
+  exclusions: '',
+  contextDepth: 5,
+  recentSentences: [],
+  
   // 이벤트 핸들러
   onSubtitle: null,
   onGloss: null,

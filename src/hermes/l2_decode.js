@@ -9,7 +9,7 @@ const L2_Decode = {
     window.L3_Transform.transformToGloss(text, source);
   },
   
-  // 수화 영상 타임코드 처리
+  // 수화 영상 타임코드 처리 (Whisper + Gloss 통합)
   processVideoTimecode(videoId, timecode) {
     const video = window.SIGN_VIDEO_SAMPLES.find(v => v.id === videoId);
     if (!video) return;
@@ -20,10 +20,19 @@ const L2_Decode = {
     );
     
     if (entry) {
-      const key = entry.gloss;
+      const key = `${videoId}_${entry.time}`;
       if (!window.HermesState.shownGlosses.has(key)) {
         window.HermesState.shownGlosses.add(key);
-        window.L5_Render.showSubtitle(entry.original, entry.easy, entry.gloss, 'video');
+        
+        const whisper = entry.whisper || entry.original;
+        const gloss = entry.gloss;
+        const fallbackEasy = entry.easy;
+        
+        window.HermesState.onStatus?.(`[L2] Whisper STT: "${whisper}"`);
+        window.HermesState.onStatus?.(`[L2] Sign Gloss: "${gloss}"`);
+        
+        // L3 Transform으로 whisper + gloss 전달 (AI 변환 또는 Fallback)
+        window.L3_Transform.transformVideoEntry(whisper, gloss, fallbackEasy, 'video');
       }
     }
   },
@@ -43,3 +52,4 @@ const L2_Decode = {
 };
 
 window.L2_Decode = L2_Decode;
+

@@ -56,6 +56,16 @@ const UI = {
   // 리스트 영역
   forestList: document.getElementById('forest-list-container'),
   signTabs: document.getElementById('sign-tabs'),
+
+  // AI Agent 설정 UI
+  aiToggle: document.getElementById('ai-toggle'),
+  aiApikey: document.getElementById('ai-apikey'),
+  btnToggleApikey: document.getElementById('btn-toggle-apikey'),
+  aiDomain: document.getElementById('ai-domain'),
+  aiExclusions: document.getElementById('ai-exclusions'),
+  aiDepth: document.getElementById('ai-depth'),
+  aiDepthVal: document.getElementById('ai-depth-val'),
+  aiActiveIndicator: document.getElementById('ai-active-indicator'),
 };
 
 let activeLayerTimers = {};
@@ -193,11 +203,15 @@ function renderSignTabs() {
     const tab = document.createElement('div');
     tab.className = 'sign-tab';
     if (idx === 0) tab.classList.add('active');
-    tab.textContent = sample.label;
+    // 짧은 레이블: "1 교회", "2 교회", "3 숲" 등
+    const shortLabel = sample.label.replace(/수화 영상 샘플 /, '');
+    tab.textContent = shortLabel;
     
     tab.onclick = () => {
       // 비디오 로드 및 재생
       setMode('video');
+      // 중복 방지 글로스 초기화 (새 영상 선택 시)
+      window.HermesState.shownGlosses.clear();
       document.querySelectorAll('.sign-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       
@@ -251,12 +265,7 @@ window.HermesState.onSubtitle = (original, easy, source) => {
   UI.displayBoard.classList.add('active');
   
   UI.boardOriginal.textContent = original;
-  if (easy !== original) {
-    UI.boardEasy.style.display = 'block';
-    UI.boardEasy.textContent = easy;
-  } else {
-    UI.boardEasy.style.display = 'none';
-  }
+  UI.boardEasy.textContent = easy || original;
   
   // Forest List 시각화 업데이트
   if (source === 'forest') {
@@ -294,7 +303,7 @@ window.HermesState.onGloss = (gloss, source) => {
     void UI.videoSubtitle.offsetWidth;
     
     UI.videoSubtitle.textContent = UI.boardOriginal.textContent;
-    UI.videoEasy.textContent = UI.boardEasy.style.display !== 'none' ? UI.boardEasy.textContent : '';
+    UI.videoEasy.textContent = UI.boardEasy.textContent;
     UI.videoGloss.textContent = gloss;
     
     UI.videoSubtitle.classList.add('subtitle-active');
@@ -340,10 +349,105 @@ UI.mainVideo.addEventListener('timeupdate', () => {
   }
 });
 
+// ─── AI Agent 설정 관리 ─────────────────────────────────────
+function initAIAgentConfig() {
+  const state = window.HermesState;
+
+  // 1. LocalStorage에서 저장된 값 로드
+  const savedEnabled = localStorage.getItem('hermes_ai_enabled') === 'true';
+  const savedApiKey = localStorage.getItem('hermes_ai_apikey') || '';
+  const savedDomain = localStorage.getItem('hermes_ai_domain') || 'church';
+  const savedExclusions = localStorage.getItem('hermes_ai_exclusions') || '';
+  const savedDepth = parseInt(localStorage.getItem('hermes_ai_depth') || '5', 10);
+
+  // 2. State 반영
+  state.aiEnabled = savedEnabled;
+  state.apiKey = savedApiKey;
+  state.domain = savedDomain;
+  state.exclusions = savedExclusions;
+  state.contextDepth = savedDepth;
+
+  // 3. UI 동기화
+  if (UI.aiToggle) UI.aiToggle.checked = savedEnabled;
+  if (UI.aiApikey) UI.aiApikey.value = savedApiKey;
+  if (UI.aiDomain) UI.aiDomain.value = savedDomain;
+  if (UI.aiExclusions) UI.aiExclusions.value = savedExclusions;
+  if (UI.aiDepth) {
+    UI.aiDepth.value = savedDepth;
+    if (UI.aiDepthVal) UI.aiDepthVal.textContent = savedDepth;
+  }
+  
+  updateAIIndicator();
+
+  // 4. 이벤트 핸들러 등록
+  
+  // AI 활성화 토글 변경
+  UI.aiToggle?.addEventListener('change', (e) => {
+    state.aiEnabled = e.target.checked;
+    localStorage.setItem('hermes_ai_enabled', state.aiEnabled);
+    updateAIIndicator();
+    appendLog(`AI 에이전트 ${state.aiEnabled ? '활성화됨' : '비활성화됨'}`);
+    showToast(`AI 에이전트가 ${state.aiEnabled ? '켜졌습니다' : '꺼졌습니다'}.`);
+  });
+
+  // API Key 변경
+  UI.aiApikey?.addEventListener('input', (e) => {
+    state.apiKey = e.target.value.trim();
+    localStorage.setItem('hermes_ai_apikey', state.apiKey);
+  });
+
+  // 비밀번호 보이기/숨기기 토글
+  UI.btnToggleApikey?.addEventListener('click', () => {
+    if (UI.aiApikey.type === 'password') {
+      UI.aiApikey.type = 'text';
+      UI.btnToggleApikey.textContent = '🔒';
+    } else {
+      UI.aiApikey.type = 'password';
+      UI.btnToggleApikey.textContent = '👁️';
+    }
+  });
+
+  // 도메인 변경
+  UI.aiDomain?.addEventListener('change', (e) => {
+    state.domain = e.target.value;
+    localStorage.setItem('hermes_ai_domain', state.domain);
+    appendLog(`상황 도메인 설정 변경: ${state.domain}`);
+  });
+
+  // 제외 단어 변경
+  UI.aiExclusions?.addEventListener('input', (e) => {
+    state.exclusions = e.target.value;
+    localStorage.setItem('hermes_ai_exclusions', state.exclusions);
+  });
+
+  // 컨텍스트 깊이 슬라이더 변경
+  UI.aiDepth?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value, 10);
+    state.contextDepth = val;
+    if (UI.aiDepthVal) UI.aiDepthVal.textContent = val;
+    localStorage.setItem('hermes_ai_depth', val);
+    
+    // 현재 버퍼 크기가 깊이보다 크면 정리
+    while (state.recentSentences.length > val) {
+      state.recentSentences.shift();
+    }
+  });
+}
+
+function updateAIIndicator() {
+  const state = window.HermesState;
+  if (state.aiEnabled) {
+    UI.aiActiveIndicator?.classList.add('active');
+  } else {
+    UI.aiActiveIndicator?.classList.remove('active');
+  }
+}
+
 // ─── 초기화 ────────────────────────────────────────────────
 window.onload = () => {
   renderForestList();
   renderSignTabs();
+  initAIAgentConfig();
   
   // L5 Render 엔진에 UI 연결
   window.L5_Render.init(null, null, null, null); // 직접 이벤트 구독 방식 사용
